@@ -1,6 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from models import db, User  # Import database and User model
 from werkzeug.security import generate_password_hash, check_password_hash
+from backend.curl import curl
+from backend.push_up import push_up 
+from backend.pull_up import pullup 
+from backend.solderpress import soldierpress
+from backend.plank import plank
+import threading 
 
 app = Flask(__name__)
 
@@ -75,6 +81,39 @@ def logout():
     session.clear()
     flash('Logged out successfully!', 'success')
     return redirect(url_for('home'))
+
+# Workout Routes (Calling Functions Directly)
+@app.route('/pushups')
+def pushups():
+    thread = threading.Thread(target=push_up)
+    thread.start()
+    return redirect(url_for('home'))
+
+@app.route('/pullups')
+def pullups():
+    thread = threading.Thread(target=pullup)
+    thread.start()
+    return redirect(url_for('home'))
+
+@app.route('/plank')
+def planksss():
+    thread = threading.Thread(target=plank)
+    thread.start()
+    return redirect(url_for('home'))
+
+@app.route('/shoulderpress')
+def shoulder_press():
+    thread = threading.Thread(target=soldierpress)
+    thread.start()
+    return redirect(url_for('home'))
+
+@app.route('/curl')
+def curls():
+    thread = threading.Thread(target=curl)
+    thread.start()
+    return redirect(url_for('home'))
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

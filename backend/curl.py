@@ -2,6 +2,8 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import pyttsx3
+import multiprocessing
+
 
 # Initialize MediaPipe Pose
 mp_pose = mp.solutions.pose
@@ -11,10 +13,16 @@ mp_draw = mp.solutions.drawing_utils
 # Initialize Text-to-Speech
 engine = pyttsx3.init()
 
+def speak_text(text):
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
+
+# Speak function to avoid event loop issues
 def speak_once(text, last_feedback):
     if text != last_feedback:
-        engine.say(text)
-        engine.runAndWait()
+        process = multiprocessing.Process(target=speak_text, args=(text,))
+        process.start()
     return text
 
 # Function to calculate angle
@@ -23,81 +31,81 @@ def calculate_angle(a, b, c):
     ba, bc = a - b, c - b
     cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
     return np.degrees(np.arccos(cosine_angle))
+def curl():
+    # Start video capture
+    cap = cv2.VideoCapture(0)
+    cap.set(3, 1280)  # Maximize screen width
+    cap.set(4, 720)   # Maximize screen height
 
-# Start video capture
-cap = cv2.VideoCapture(0)
-cap.set(3, 1280)  # Maximize screen width
-cap.set(4, 720)   # Maximize screen height
+    last_feedback = ""
+    right_count, left_count = 0, 0
+    right_up, left_up = False, False  # Flags to track full curl movement
+    turn = "right"  # Start with right arm
 
-last_feedback = ""
-right_count, left_count = 0, 0
-right_up, left_up = False, False  # Flags to track full curl movement
-turn = "right"  # Start with right arm
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = pose.process(frame_rgb)
 
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = pose.process(frame_rgb)
+        feedback = "Keep going!"
 
-    feedback = "Keep going!"
+        if results.pose_landmarks:
+            landmarks = results.pose_landmarks.landmark
 
-    if results.pose_landmarks:
-        landmarks = results.pose_landmarks.landmark
+            # Right hand points
+            shoulder_r = [landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER].x, landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER].y]
+            elbow_r = [landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW].x, landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW].y]
+            wrist_r = [landmarks[mp_pose.PoseLandmark.RIGHT_WRIST].x, landmarks[mp_pose.PoseLandmark.RIGHT_WRIST].y]
 
-        # Right hand points
-        shoulder_r = [landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER].x, landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER].y]
-        elbow_r = [landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW].x, landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW].y]
-        wrist_r = [landmarks[mp_pose.PoseLandmark.RIGHT_WRIST].x, landmarks[mp_pose.PoseLandmark.RIGHT_WRIST].y]
+            # Left hand points
+            shoulder_l = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].x, landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].y]
+            elbow_l = [landmarks[mp_pose.PoseLandmark.LEFT_ELBOW].x, landmarks[mp_pose.PoseLandmark.LEFT_ELBOW].y]
+            wrist_l = [landmarks[mp_pose.PoseLandmark.LEFT_WRIST].x, landmarks[mp_pose.PoseLandmark.LEFT_WRIST].y]
 
-        # Left hand points
-        shoulder_l = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].x, landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].y]
-        elbow_l = [landmarks[mp_pose.PoseLandmark.LEFT_ELBOW].x, landmarks[mp_pose.PoseLandmark.LEFT_ELBOW].y]
-        wrist_l = [landmarks[mp_pose.PoseLandmark.LEFT_WRIST].x, landmarks[mp_pose.PoseLandmark.LEFT_WRIST].y]
+            # Calculate angles
+            angle_right = int(calculate_angle(shoulder_r, elbow_r, wrist_r))
+            angle_left = int(calculate_angle(shoulder_l, elbow_l, wrist_l))
 
-        # Calculate angles
-        angle_right = int(calculate_angle(shoulder_r, elbow_r, wrist_r))
-        angle_left = int(calculate_angle(shoulder_l, elbow_l, wrist_l))
+            # Alternate feedback for each arm
+            if turn == "right":
+                if angle_right > 160:
+                    feedback = "Curl your right arm up!"
+                    right_up = False
+                elif angle_right < 50 and not right_up:
+                    feedback = "Good right curl! Now use left."
+                    right_up = True
+                    right_count += 1
+                    turn = "left"
 
-        # Alternate feedback for each arm
-        if turn == "right":
-            if angle_right > 160:
-                feedback = "Curl your right arm up!"
-                right_up = False
-            elif angle_right < 50 and not right_up:
-                feedback = "Good right curl! Now use left."
-                right_up = True
-                right_count += 1
-                turn = "left"
+            elif turn == "left":
+                if angle_left > 160:
+                    feedback = "Curl your left arm up!"
+                    left_up = False
+                elif angle_left < 50 and not left_up:
+                    feedback = "Good left curl! Now use right."
+                    left_up = True
+                    left_count += 1
+                    turn = "right"
 
-        elif turn == "left":
-            if angle_left > 160:
-                feedback = "Curl your left arm up!"
-                left_up = False
-            elif angle_left < 50 and not left_up:
-                feedback = "Good left curl! Now use right."
-                left_up = True
-                left_count += 1
-                turn = "right"
+            last_feedback = speak_once(feedback, last_feedback)
 
-        last_feedback = speak_once(feedback, last_feedback)
+            # Draw landmarks and display feedback
+            mp_draw.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-        # Draw landmarks and display feedback
-        mp_draw.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            # Display angles and count
+            cv2.putText(frame, f"Right Angle: {angle_right}°", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, f"Right Count: {right_count}", (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
 
-        # Display angles and count
-        cv2.putText(frame, f"Right Angle: {angle_right}°", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(frame, f"Right Count: {right_count}", (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            cv2.putText(frame, f"Left Angle: {angle_left}°", (900, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, f"Left Count: {left_count}", (900, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
 
-        cv2.putText(frame, f"Left Angle: {angle_left}°", (900, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(frame, f"Left Count: {left_count}", (900, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+        cv2.imshow("Bicep Curl Tracker", frame)
 
-    cv2.imshow("Bicep Curl Tracker", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+    cap.release()
+    cv2.destroyAllWindows()

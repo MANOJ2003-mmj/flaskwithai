@@ -4,25 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workouts</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
 
     <header>
         <h1>Select Your Workout</h1>
         <nav>
-            <a href="home.html">Home</a>
+            <a href="{{ url_for('home') }}">Home</a>
         </nav>
     </header>
 
     <main>
         <section class="menu">
             <div class="workouts">
-                <a href="#">Push-Ups</a>
-                <a href="#">Pull-Ups</a>
-                <a href="#">Plank</a>
-                <a href="#">Shoulder Press</a>
-                <a href="#">Curl</a>
+                <a href="{{ url_for('pushups') }}">Push-Ups</a>
+                <a href="{{ url_for('pullups') }}">Pull-Ups</a>
+                <a href="{{ url_for('planksss') }}">Plank</a>
+                <a href="{{ url_for('shoulder_press') }}">Shoulder Press</a>
+                <a href="{{ url_for('curls') }}">Curl</a>
             </div>
         </section>
     </main>
