@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workout Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+    <header>
+        <h1>AI Workout Tracker</h1>
+        <nav>
+            {% if session.get('username') %}
+                <span>Welcome, {{ session['username'] }}</span>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Sign In</a>
+                <a href="{{ url_for('signup') }}">Sign Up</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <main>
+        <section class="home">
+            <h2>Welcome to AI Workout Tracker</h2>
+            <p>Track your workouts in real-time with AI-powered feedback.</p>
+            <br><br><br>
+            <a href="{{ url_for('select_page') }}" class="start-btn">Start Workout</a>
+        </section>
+    </main>
+
+</body>
+</html>
